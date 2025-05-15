@@ -1,7 +1,7 @@
 from models import user, application, app_credentials, otps
 _ = user.User
 _ = application.Application
-_ = app_credentials.AppCredential
+_ = app_credentials.AppCredentials
 _ = otps.OTP
 from fastapi import FastAPI, Depends, HTTPException
 from db.database import engine
