@@ -15,7 +15,7 @@ import logging
 from utils.insert_initial_user import insert_initial_user
 from utils.inser_applications_once import insert_initial_apps
 
-app = FastAPI()
+# app = FastAPI()
 
 
 
