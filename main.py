@@ -19,16 +19,19 @@ import logging
 from utils.insert_initial_user import insert_initial_user
 from utils.inser_applications_once import insert_initial_apps
 
-# app = FastAPI()
+app = FastAPI()
 
-
+@app.on_event("startup")
+async def on_startup():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
 
 # Lifespan context for initializing the DB
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    async with engine.begin() as conn:
-        print("Registered tables:", Base.metadata.tables.keys())
-        await conn.run_sync(Base.metadata.create_all)
+# @asynccontextmanager
+# async def lifespan(app: FastAPI):
+#     async with engine.begin() as conn:
+#         print("Registered tables:", Base.metadata.tables.keys())
+#         await conn.run_sync(Base.metadata.create_all)
     
         async with SessionLocal() as session:
             await insert_initial_user(session)
@@ -39,7 +42,7 @@ async def lifespan(app: FastAPI):
 
 
 # Only one instance of FastAPI with lifespan
-app = FastAPI(lifespan=lifespan)
+# app = FastAPI(lifespan=lifespan)
 
 @app.post("/insert_initial")
 async def read_root():
