@@ -21,3 +21,9 @@ class UserOut(BaseModel):
 
     class Config:
         orm_mode = True
+
+# Response schema for user credentials
+class AppCredentialOut(BaseModel):
+    app_name: str
+    username: str
+    password: str

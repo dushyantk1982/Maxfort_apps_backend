@@ -31,8 +31,12 @@ router = APIRouter()
 async def verify_password(plain_password, hashed_password):
     return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
 
-async def create_jwt_token(user_id):
-    payload = {"sub": str(user_id), "exp": datetime.now(timezone.utc) + timedelta(hours=1)}
+# async def create_jwt_token(user_id):
+#     payload = {"sub": str(user_id), "exp": datetime.now(timezone.utc) + timedelta(hours=1)}
+#     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
+
+async def create_jwt_token(user):
+    payload = {"sub": str(user.email), "role": user.role, "exp": datetime.now(timezone.utc) + timedelta(hours=1)}
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
@@ -59,7 +63,8 @@ async def send_otp(data: OTPRequest, db: AsyncSession = Depends(get_db)):
     print(f"Sent OTP {otp} to {user.mobile_number}")
 
     await db.commit()
-    return {"success": True}
+    return {"success": True,
+            "otp":otp}
 
     
 class VerifyOTPSchema(BaseModel):
@@ -82,8 +87,8 @@ async def verify_user_otp(data: VerifyOTPSchema, db: AsyncSession = Depends(get_
     user.otp_code = None
     user.otp_expiry = None
     await db.commit()
-
-    token = await create_jwt_token(user.email)
+    token = await create_jwt_token(user)
+    # token = await create_jwt_token(user.email)
     print("Access Token:", token)
     return {"access_token": token, "token_type": "bearer"}
 
@@ -102,7 +107,8 @@ async def login_with_otp(payload: VerifyOTPSchema, db: AsyncSession = Depends(ge
         user = result.scalars().first()
 
         # Create JWT token
-        token_data = {"sub": str(user.id), "role": user.role}
+        token_data = {"sub": user.email, "role": user.role}
+        # token_data = {"sub": str(user.id), "role": user.role}
         access_token = create_access_token(token_data)
 
         return {

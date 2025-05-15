@@ -6,8 +6,9 @@ from models.app_credentials import AppCredentials
 from models.user import User
 from models.application import Application
 from schemas.user import AppCredentialInput
-from schemas.apps_credential_out import ApplicationOut, UserOut
+from schemas.apps_credential_out import ApplicationOut, UserOut, AppCredentialOut
 from typing import List
+from utils.encryption import encrypt_password, decrypt_password
 
 router = APIRouter()
 
@@ -24,11 +25,12 @@ async def add_credentials(
             raise HTTPException(status_code=404, detail="User not found")
 
         for cred in credentials:
+            encrypted_password = encrypt_password(cred.password) # To encrypt password
             new_cred = AppCredentials(
                 user_id=user_id,
                 application_id=cred.app_id,
                 username=cred.username,
-                password=cred.password  # Consider encrypting this
+                password=encrypted_password  
             )
             db.add(new_cred)
 
@@ -50,3 +52,26 @@ async def get_all_users(db: AsyncSession = Depends(get_db)):
 async def get_all_applications(db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(Application))
     return result.scalars().all()
+
+
+# Get user credentials 
+@router.get("/user-credentials/{user_id}", response_model=List[AppCredentialOut])
+async def get_user_credentials(user_id: int, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(
+        select(AppCredentials, Application)
+        .join(Application, AppCredentials.application_id == Application.id)
+        .where(AppCredentials.user_id == user_id)
+    )
+    rows = result.all()
+    if not rows:
+        raise HTTPException(status_code=404, detail="No credentials found")
+
+    return [
+        AppCredentialOut(
+            app_name=app.name,
+            username=cred.username,
+            password=cred.password
+            # password=decrypt_password(cred.password)  # Decrypt the password
+        )
+        for cred, app in rows
+    ]

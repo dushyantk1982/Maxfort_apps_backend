@@ -10,6 +10,7 @@ router = APIRouter()
 
 @router.put("/users/{user_id}")
 async def update_user(user_id: int, updated_user: UserUpdateSchema, db: AsyncSession = Depends(get_db)):
+    print("Incoming data:", updated_user)
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
 

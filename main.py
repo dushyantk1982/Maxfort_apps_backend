@@ -8,7 +8,7 @@ from models import user, application, app_credentials, otps
 from fastapi.middleware.cors import CORSMiddleware
 from db.database import Base, engine, SessionLocal
 from contextlib import asynccontextmanager
-from routes import admin, auth_otp, protected_route, auth, user_list, update_user, upload_users, app_credentials
+from routes import admin, auth_otp, protected_route, auth, user_list, update_user, upload_users, app_credentials, all_applications, get_app_credentials, get_profile
 from starlette.routing import BaseRoute
 from models.otps import OTP
 import logging
@@ -49,6 +49,9 @@ app.include_router(user_list.router)
 app.include_router(update_user.router)
 app.include_router(upload_users.router)
 app.include_router(app_credentials.router)
+app.include_router(all_applications.router)
+app.include_router(get_app_credentials.router)
+app.include_router(get_profile.router)
 
 
 # Allow request from ReactJS
@@ -60,7 +63,8 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    # allow_origins=origins,
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
