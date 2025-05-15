@@ -1,10 +1,10 @@
+from models import user, application, app_credentials, otps
 from fastapi import FastAPI, Depends, HTTPException
 from db.database import engine
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from db import database  # Adjust based on your project structure
 # import crud  # Or wherever you define DB operations
-from models import user, application, app_credentials, otps
 from fastapi.middleware.cors import CORSMiddleware
 from db.database import Base, engine, SessionLocal
 from contextlib import asynccontextmanager
@@ -23,6 +23,7 @@ from utils.inser_applications_once import insert_initial_apps
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
+        print("Registered tables:", Base.metadata.tables.keys())
         await conn.run_sync(Base.metadata.create_all)
     
         async with SessionLocal() as session:
