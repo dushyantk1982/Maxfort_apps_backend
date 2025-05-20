@@ -7,6 +7,7 @@ class UserUpdateSchema(BaseModel):
     mobile_number: Optional[str]
     role: Optional[str]
     is_active: Optional[bool] = True
+    password: Optional[str] = None
 
 class Config:
         orm_mode = True

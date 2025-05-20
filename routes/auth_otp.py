@@ -40,20 +40,26 @@ async def create_jwt_token(user):
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
+# Send OTP logic 
+
 class OTPRequest(BaseModel):
     username: str
-    password: str
+    # password: str
 
 @router.post("/send-otp")
 async def send_otp(data: OTPRequest, db: AsyncSession = Depends(get_db)):
     username = data.username
-    password = data.password
+    # password = data.password
 
     result = await db.execute(select(User).where(User.email == username))
     user = result.scalars().first()
-    if not user or not await verify_password(password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-    # print(f"User: {user}, password_hash: {getattr(user, 'password_hash', None)}")
+    
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+    
+    # if not user or not await verify_password(password, user.password_hash):
+    #     raise HTTPException(status_code=401, detail="Invalid credentials")
+    
     otp = str(random.randint(100000, 999999))
     user.otp_code = otp
     otp_expiry = datetime.now(timezone.utc) + timedelta(minutes=5)
@@ -66,7 +72,9 @@ async def send_otp(data: OTPRequest, db: AsyncSession = Depends(get_db)):
     return {"success": True,
             "otp":otp}
 
-    
+
+#  Verigy OTP Logic
+
 class VerifyOTPSchema(BaseModel):
     username: str
     otp: str
@@ -127,3 +135,22 @@ async def login_with_otp(payload: VerifyOTPSchema, db: AsyncSession = Depends(ge
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail="Something went wrong")
+
+
+# Login with Password Logic
+
+class PasswordLoginSchema(BaseModel):
+    username: str
+    password: str
+
+@router.post("/auth/token")
+async def login_with_password(data: PasswordLoginSchema, db: AsyncSession = Depends(get_db)):
+    # username = data.username
+    # password = data.password
+    result = await db.execute(select(User).where(User.email == data.username))
+    user = result.scalars().first()
+    if not user or not await verify_password(data.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    token = await create_jwt_token(user)
+    return {"access_token": token, "token_type": "bearer"}

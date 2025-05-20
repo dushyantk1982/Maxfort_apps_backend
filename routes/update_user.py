@@ -5,6 +5,7 @@ from sqlalchemy.future import select
 from schemas.UserUpdateSchema import UserUpdateSchema
 from models import User
 from db.database import get_db, SessionLocal
+from utils.security import hash_password
 
 router = APIRouter()
 
@@ -22,6 +23,20 @@ async def update_user(user_id: int, updated_user: UserUpdateSchema, db: AsyncSes
     user.mobile_number = updated_user.mobile_number
     user.role = updated_user.role
     user.is_active = updated_user.is_active
+    if updated_user.password:
+        user.password_hash = hash_password(updated_user.password)
+    # if updated_user.name is not None:
+    #     user.name = updated_user.name
+    # if updated_user.email is not None:
+    #     user.email = updated_user.email
+    # if updated_user.mobile_number is not None:
+    #     user.mobile_number = updated_user.mobile_number
+    # if updated_user.role is not None:
+    #     user.role = updated_user.role
+    # if updated_user.is_active is not None:
+    #     user.is_active = updated_user.is_active
+    # if updated_user.password:
+    #     user.password_hash = hash_password(updated_user.password)
 
     try:
         await db.commit()
@@ -34,7 +49,8 @@ async def update_user(user_id: int, updated_user: UserUpdateSchema, db: AsyncSes
                     "email": user.email,
                     "mobile_number": user.mobile_number,
                     "role": user.role,
-                    "is_active": user.is_active
+                    "is_active": user.is_active,
+                    "password_hash":user.password_hash,
                 }
             }
     except Exception as e:

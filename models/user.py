@@ -11,6 +11,6 @@ class User(Base):
     mobile_number = Column(String)
     is_active = Column(Boolean, default=True)
     role = Column(String, default="user")
-    password_hash = Column(String)
+    password_hash = Column(String, nullable=False)
     otp_code = Column(String, nullable=True)
     otp_expiry = Column(DateTime, nullable=True)
