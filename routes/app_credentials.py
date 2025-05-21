@@ -70,8 +70,8 @@ async def get_user_credentials(user_id: int, db: AsyncSession = Depends(get_db))
         AppCredentialOut(
             app_name=app.name,
             username=cred.username,
-            password=cred.password
-            # password=decrypt_password(cred.password)  # Decrypt the password
+            # password=cred.password
+            password=decrypt_password(cred.password)  # Decrypt the password
         )
         for cred, app in rows
     ]

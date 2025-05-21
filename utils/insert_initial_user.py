@@ -15,7 +15,7 @@ async def insert_initial_user(db: AsyncSession):
     if user:
         print("Admin already exists")
         return
-    # to Encrypt password
+    # To Encrypt password
     hashed_pw = bcrypt.hashpw("admin123".encode(), bcrypt.gensalt()).decode()
 
     new_user = User(

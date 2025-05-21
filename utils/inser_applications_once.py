@@ -10,7 +10,7 @@ from models.application import Application  # adjust the path if needed
 
 # Define your application data
 async def insert_initial_apps(db: AsyncSession):
-
+# to add applicationss
     apps = [
             {
                 "name": "Microsoft Outlook",
@@ -47,7 +47,14 @@ async def insert_initial_apps(db: AsyncSession):
                 "app_url": "https://www.kidsa-z.com/ng/",
                 "icon_url": "https://aimkt.misacdn.net/app/vr8x81d7/attachment/41f49e45-cff8-4e3a-96bf-c41c7938b3de.png",
                 "is_microsoft_oauth": False
+            },
+            {
+                "name": "ICT 360",
+                "app_url": "https://kms.ict360.com/ict_v3/login",
+                "icon_url": "https://kms.ict360.com/ict_v3/assets/images/ict_logo.png",
+                "is_microsoft_oauth": False
             }
+
         ]
 
     async with db as session:
