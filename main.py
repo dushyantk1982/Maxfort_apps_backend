@@ -21,10 +21,10 @@ from utils.inser_applications_once import insert_initial_apps
 
 app = FastAPI()
 
-@app.on_event("startup")
-async def on_startup():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+# @app.on_event("startup")
+# async def on_startup():
+#     async with engine.begin() as conn:
+#         await conn.run_sync(Base.metadata.create_all)
 
 # Lifespan context for initializing the DB
 # @asynccontextmanager
@@ -33,20 +33,29 @@ async def on_startup():
 #         print("Registered tables:", Base.metadata.tables.keys())
 #         await conn.run_sync(Base.metadata.create_all)
     
-        async with SessionLocal() as session:
-            await insert_initial_user(session)
-            await insert_initial_apps(session)
+    #     async with SessionLocal() as session:
+    #         await insert_initial_user(session)
+    #         await insert_initial_apps(session)
 
-    yield
+    # yield
 
-
+@app.post("/insert-initial")
+async def insert_initial_data():
+    async with SessionLocal() as session:
+        await insert_initial_user(session)
+        await insert_initial_apps(session)
+    return {"msg": "Initial data inserted"}
 
 # Only one instance of FastAPI with lifespan
 # app = FastAPI(lifespan=lifespan)
 
-@app.post("/insert_initial")
-async def read_root():
-    return {"msg": "User created"}
+# @app.post("/insert_initial")
+# async def read_root():
+#     return {"msg": "User created"}
+
+@app.get("/")
+async def root():
+    return {"message": "FastAPI backend is live!"}
 
 # Include all routers
 app.include_router(admin.router)
