@@ -35,7 +35,7 @@ async def get_users(
     
     # Get paginated results
     offset = (page - 1) * per_page
-    result = await db.execute(select(User).offset(offset).limit(per_page))
+    result = await db.execute(select(User).order_by(User.id).offset(offset).limit(per_page))
     users = result.scalars().all()
 
     # users_data = [UserOut.from_orm(user).dict() for user in users]

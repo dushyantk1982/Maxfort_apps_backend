@@ -27,3 +27,10 @@ class AppCredentialOut(BaseModel):
     app_name: str
     username: str
     password: str
+
+class ApplicationCredentialOut(BaseModel):
+    app_name: str
+    username: str
+    password: str
+    user_name: str  # Add user name
+    user_email: str  # Add user email

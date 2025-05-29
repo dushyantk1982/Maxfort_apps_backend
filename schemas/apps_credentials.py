@@ -12,3 +12,9 @@ class AppCredentialsRequest(BaseModel):
     credentials: List[AppCredentialInput]
 
 
+# To update app credentials
+class CredentialUpdateRequest(BaseModel):
+    # user_id: int
+    # application_id: int
+    username: str
+    password: str

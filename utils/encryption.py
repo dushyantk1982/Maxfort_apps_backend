@@ -1,6 +1,7 @@
 import os
 from cryptography.fernet import Fernet
 from dotenv import load_dotenv
+from fastapi import HTTPException
 
 # Load environment variables from .env file
 load_dotenv()
@@ -16,8 +17,14 @@ fernet = Fernet(FERNET_KEY)
 
 def encrypt_password(password: str) -> str:
     """Encrypt the password using Fernet symmetric encryption."""
-    return fernet.encrypt(password.encode()).decode()
+    try:
+        return fernet.encrypt(password.encode()).decode()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Encryption failed: {str(e)}")
 
 def decrypt_password(encrypted_password: str) -> str:
     """Decrypt the password back to plaintext."""
-    return fernet.decrypt(encrypted_password.encode()).decode()
+    try:
+        return fernet.decrypt(encrypted_password.encode()).decode()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Invalid Password")
