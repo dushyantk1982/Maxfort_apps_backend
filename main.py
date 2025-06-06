@@ -1,14 +1,10 @@
-from models import user, application, app_credentials, otps
-_ = user.User
-_ = application.Application
-_ = app_credentials.AppCredentials
-_ = otps.OTP
 from fastapi import FastAPI, Depends, HTTPException
 from db.database import engine
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from db import database  # Adjust based on your project structure
 # import crud  # Or wherever you define DB operations
+from models import user, application, app_credentials, otps
 from fastapi.middleware.cors import CORSMiddleware
 from db.database import Base, engine, SessionLocal
 from contextlib import asynccontextmanager
@@ -19,43 +15,30 @@ import logging
 from utils.insert_initial_user import insert_initial_user
 from utils.inser_applications_once import insert_initial_apps
 
-app = FastAPI()
+app = FastAPI(root_path="/api")
 
-# @app.on_event("startup")
-# async def on_startup():
-#     async with engine.begin() as conn:
-#         await conn.run_sync(Base.metadata.create_all)
+
 
 # Lifespan context for initializing the DB
-# @asynccontextmanager
-# async def lifespan(app: FastAPI):
-#     async with engine.begin() as conn:
-#         print("Registered tables:", Base.metadata.tables.keys())
-#         await conn.run_sync(Base.metadata.create_all)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
     
-    #     async with SessionLocal() as session:
-    #         await insert_initial_user(session)
-    #         await insert_initial_apps(session)
+        async with SessionLocal() as session:
+            await insert_initial_user(session)
+            await insert_initial_apps(session)
 
-    # yield
+    yield
 
-@app.post("/insert-initial")
-async def insert_initial_data():
-    async with SessionLocal() as session:
-        await insert_initial_user(session)
-        await insert_initial_apps(session)
-    return {"msg": "Initial data inserted"}
+
 
 # Only one instance of FastAPI with lifespan
-# app = FastAPI(lifespan=lifespan)
+app = FastAPI(lifespan=lifespan)
 
-# @app.post("/insert_initial")
-# async def read_root():
-#     return {"msg": "User created"}
-
-@app.get("/")
-async def root():
-    return {"message": "FastAPI backend is live!"}
+@app.post("/insert_initial")
+async def read_root():
+    return {"msg": "User created"}
 
 # Include all routers
 app.include_router(admin.router)
@@ -80,7 +63,6 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    # allow_origins=origins,
     allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
