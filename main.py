@@ -59,6 +59,7 @@ app.include_router(app_credentials.router)
 app.include_router(all_applications.router)
 app.include_router(get_app_credentials.router)
 app.include_router(get_profile.router)
+app.include_router(notifications.router)
 
 
 # Allow request from ReactJS
