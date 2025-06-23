@@ -48,18 +48,18 @@ async def read_root():
     return {"msg": "User created"}
 
 # Include all routers
-app.include_router(admin.router)
-app.include_router(auth_otp.router)
-app.include_router(protected_route.protected_router)
-app.include_router(auth.router)
-app.include_router(user_list.router)
-app.include_router(update_user.router)
-app.include_router(upload_users.router)
-app.include_router(app_credentials.router)
-app.include_router(all_applications.router)
-app.include_router(get_app_credentials.router)
-app.include_router(get_profile.router)
-app.include_router(notifications.router)
+app.include_router(admin.router, prefix="/api")
+app.include_router(auth_otp.router, prefix="/api")
+app.include_router(protected_route.protected_router, prefix="/api")
+app.include_router(auth.router, prefix="/api")
+app.include_router(user_list.router, prefix="/api")
+app.include_router(update_user.router, prefix="/api")
+app.include_router(upload_users.router, prefix="/api")
+app.include_router(app_credentials.router, prefix="/api")
+app.include_router(all_applications.router, prefix="/api")
+app.include_router(get_app_credentials.router, prefix="/api")
+app.include_router(get_profile.router, prefix="/api")
+app.include_router(notifications.router, prefix="/api")
 
 
 # Allow request from ReactJS
