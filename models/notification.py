@@ -22,10 +22,17 @@
 
 # models.py
 
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, func
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Table, ForeignKey, func
+from sqlalchemy.orm import relationship
+from .user import User
+from db.database import get_db
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.sql import func
+from db.database import Base
+from models.notification_user import notification_user
 
-Base = declarative_base()
+
+# Base = declarative_base()
 
 class Notification(Base):
     __tablename__ = "notifications"
@@ -34,4 +41,12 @@ class Notification(Base):
     message = Column(String, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    users = relationship("User", secondary=notification_user, back_populates="notifications")
 
+    # Many-to-many with users
+    # users = relationship(
+    #     "User",
+    #     secondary="notification_user",
+    #     back_populates="notifications"
+    # )

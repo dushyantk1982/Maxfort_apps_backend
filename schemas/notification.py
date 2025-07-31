@@ -23,19 +23,40 @@
 
 # schemas.py
 
+# from pydantic import BaseModel
+# from datetime import datetime
+
+# class NotificationBase(BaseModel):
+#     message: str
+
+# class NotificationCreate(NotificationBase):
+#     pass
+
+# class NotificationResponse(NotificationBase):
+#     id: int
+#     is_active: bool
+#     created_at: datetime
+
+# class Config:
+#     from_attributes = True
+
+
+# schemas/notification.py
+from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
 
-class NotificationBase(BaseModel):
+class NotificationCreate(BaseModel):
     message: str
+    user_ids: List[int]  # Targeted users
 
-class NotificationCreate(NotificationBase):
-    pass
-
-class NotificationResponse(NotificationBase):
+class NotificationResponse(BaseModel):
     id: int
+    message: str
     is_active: bool
     created_at: datetime
+    # user_ids: List[int]
+
 
 class Config:
-    from_attributes = True
+    from_attribute = True

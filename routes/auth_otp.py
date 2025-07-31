@@ -12,8 +12,8 @@ import random
 import bcrypt
 from datetime import datetime, timedelta, timezone
 import traceback
-from auth.auth_jwt import create_access_token
-from jose import jwt
+from auth.auth_jwt import create_access_token, create_refresh_access_token
+from jose import jwt, JWTError
 import os
 from dotenv import load_dotenv
 
@@ -23,7 +23,8 @@ load_dotenv()
 
 SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+ACCESS_TOKEN_EXPIRE_MINUTES = 43200
+
 
 router = APIRouter()
 
@@ -36,9 +37,13 @@ async def verify_password(plain_password, hashed_password):
 #     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 async def create_jwt_token(user):
-    payload = {"sub": str(user.email), "role": user.role, "exp": datetime.now(timezone.utc) + timedelta(hours=1)}
+    # payload = {"sub": str(user.email), "role": user.role, "exp": datetime.now(timezone.utc) + timedelta(hours=1)}
+    payload = {"sub": str(user.email), "role": user.role, "exp": datetime.now(timezone.utc) + timedelta(minutes=43200)}
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
+async def create_refresh_token(user):
+    payload = {"sub": str(user.email), "role": user.role, "exp": datetime.now(timezone.utc) + timedelta(days=7)}
+    return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 # Send OTP logic 
 
@@ -56,6 +61,9 @@ async def send_otp(data: OTPRequest, db: AsyncSession = Depends(get_db)):
     
     if not user:
         raise HTTPException(status_code=401, detail="User not found")
+    
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account disabled")
     
     # if not user or not await verify_password(password, user.password_hash):
     #     raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -86,19 +94,29 @@ async def verify_user_otp(data: VerifyOTPSchema, db: AsyncSession = Depends(get_
 
     result = await db.execute(select(User).where(User.email == username))
     user = result.scalars().first()
+
+    if not user:
+        raise HTTPException(status_code=401, detail="User not found")
+
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account disabled")
+
     otp_expiry_aware = user.otp_expiry.replace(tzinfo=timezone.utc)
     print(f"Expected OTP: {user.otp_code}, Provided OTP: {data.otp}")
+
     if not user or user.otp_code != otp or otp_expiry_aware < datetime.now(timezone.utc):
         raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+    
     print("OTP Verified")
 
     user.otp_code = None
     user.otp_expiry = None
     await db.commit()
     token = await create_jwt_token(user)
+    refresh_token = await create_refresh_token(user)
     # token = await create_jwt_token(user.email)
     print("Access Token:", token)
-    return {"access_token": token, "token_type": "bearer"}
+    return {"access_token": token, "referesh_token": refresh_token, "token_type": "bearer"}
 
   
 
@@ -118,9 +136,11 @@ async def login_with_otp(payload: VerifyOTPSchema, db: AsyncSession = Depends(ge
         token_data = {"sub": user.email, "role": user.role}
         # token_data = {"sub": str(user.id), "role": user.role}
         access_token = create_access_token(token_data)
+        refresh_access_token = create_refresh_access_token(token_data)
 
         return {
             "access_token": access_token,
+            "refresh_token": refresh_access_token,
             "token_type": "bearer",
             "user": {
                 "id": user.id,
@@ -149,8 +169,54 @@ async def login_with_password(data: PasswordLoginSchema, db: AsyncSession = Depe
     # password = data.password
     result = await db.execute(select(User).where(User.email == data.username))
     user = result.scalars().first()
-    if not user or not await verify_password(data.password, user.password_hash):
+
+    if not user:
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Account disabled")
+    
+    if not await verify_password(data.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    # if not user or not await verify_password(data.password, user.password_hash):
+    #     raise HTTPException(status_code=401, detail="Invalid credentials")
+    
     token = await create_jwt_token(user)
-    return {"access_token": token, "token_type": "bearer"}
+    refresh_token = await create_refresh_token(user)
+    return {"access_token": token, "referesh_token": refresh_token, "token_type": "bearer"}
+
+# Check email before login method
+
+@router.post("/check-email")
+async def check_email_exists(data: dict, db: AsyncSession = Depends(get_db)):
+    email = data.get("email")
+    if not email:
+        raise HTTPException(status_code=400, detail="Email is required")
+
+    result = await db.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Email not found")
+    
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="Your account is disabled. Please contact Admin.")
+    
+    return {"exists": True}
+
+
+# To refresh JWT token
+
+
+@router.post("/refresh")
+async def refresh_token(refresh_token: str):
+    try:
+        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        new_access_token = create_access_token({
+            "sub": payload["sub"],
+            "role": payload["role"]
+        })
+        return {"access_token": new_access_token}
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid refresh token")

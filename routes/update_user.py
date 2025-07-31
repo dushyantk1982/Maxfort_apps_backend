@@ -23,6 +23,11 @@ async def update_user(user_id: int, updated_user: UserUpdateSchema, db: AsyncSes
     user.mobile_number = updated_user.mobile_number
     user.role = updated_user.role
     user.is_active = updated_user.is_active
+    user.employee_code = updated_user.employee_code
+    user.admission_no = updated_user.admission_no
+    user.class_name = updated_user.class_name
+    user.section = updated_user.section
+
     if updated_user.password:
         user.password_hash = hash_password(updated_user.password)
     # if updated_user.name is not None:
@@ -50,6 +55,10 @@ async def update_user(user_id: int, updated_user: UserUpdateSchema, db: AsyncSes
                     "mobile_number": user.mobile_number,
                     "role": user.role,
                     "is_active": user.is_active,
+                    "employee_code": user.employee_code,
+                    "admission_no": user.admission_no,
+                    "class_name": user.class_name,
+                    "section": user.section,
                     "password_hash":user.password_hash,
                 }
             }

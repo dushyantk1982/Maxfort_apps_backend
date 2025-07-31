@@ -17,8 +17,20 @@ from typing import List
 from utils.encryption import encrypt_password, decrypt_password
 from auth.auth_jwt import get_current_user
 import traceback
+import math
 
 router = APIRouter()
+
+# Replace NaN with None recursively
+def clean_nan(obj):
+    if isinstance(obj, list):
+        return [clean_nan(item) for item in obj]
+    elif isinstance(obj, dict):
+        return {k: clean_nan(v) for k, v in obj.items()}
+    elif isinstance(obj, float) and math.isnan(obj):
+        return None
+    return obj
+
 
 # To add apps credentials
 @router.post("/add-credentials/{user_id}")
@@ -211,7 +223,7 @@ async def bulk_upload_credentials(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_db)
 ):
-    try:
+    # try:
         # Read the Excel file
         df = pd.read_excel(file.file)
         
@@ -224,7 +236,7 @@ async def bulk_upload_credentials(
             )
         
         # Remove any rows with empty credentials
-        df = df.dropna(subset=['username', 'password'])
+        #df = df.dropna(subset=['username', 'password'])
 
         # Convert user_id and application_id to integers
         df['user_id'] = df['user_id'].astype(int)
@@ -233,23 +245,40 @@ async def bulk_upload_credentials(
         # Get all valid user IDs and application IDs
         users_result = await db.execute(select(User))
         apps_result = await db.execute(select(Application))
-        valid_users = {user.id for user in users_result.scalars().all()}
-        valid_apps = {app.id for app in apps_result.scalars().all()}
+        # valid_users = {user.id for user in users_result.scalars().all()}
+        # valid_apps = {app.id for app in apps_result.scalars().all()}
         
         # Validate user_ids and application_ids
-        invalid_users = set(df['user_id'].unique()) - valid_users
-        invalid_apps = set(df['application_id'].unique()) - valid_apps
+        # invalid_users = set(df['user_id'].unique()) - valid_users
+        # invalid_apps = set(df['application_id'].unique()) - valid_apps
+
+        # Build lookup dictionaries
+        # user_lookup = {user.id: user for user in users_result.scalars().all()}
+        # app_lookup = {app.id: app for app in apps_result.scalars().all()}
+
+        # Fetch all users and applications once
+        users = users_result.scalars().all()
+        apps = apps_result.scalars().all()
+
+        # Build lookup sets and dictionaries
+        valid_users = {user.id for user in users}
+        valid_apps = {app.id for app in apps}
+        user_lookup = {user.id: user for user in users}
+        app_lookup = {app.id: app for app in apps}
+
+        # Track valid rows to insert
+        valid_rows = []
         
-        if invalid_users:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid user IDs found: {invalid_users}"
-            )
-        if invalid_apps:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid application IDs found: {invalid_apps}"
-            )
+        # if invalid_users:
+        #     raise HTTPException(
+        #         status_code=400,
+        #         detail=f"Invalid user IDs found: {invalid_users}"
+        #     )
+        # if invalid_apps:
+        #     raise HTTPException(
+        #         status_code=400,
+        #         detail=f"Invalid application IDs found: {invalid_apps}"
+        #     )
         
         # Process each row
         success_count = 0
@@ -262,46 +291,107 @@ async def bulk_upload_credentials(
             delete(AppCredentials).where(AppCredentials.user_id.in_(user_ids))
         )
         
-        for _, row in df.iterrows():
+        # Process each row
+        for idx, row in df.iterrows():
+            row_number = idx + 2  # Excel header is on row 1
             try:
-                
+                user_id = int(row['user_id'])
+                application_id = int(row['application_id'])
+                # username = str(row['username'] or '').strip()
+                # password = str(row['password'] or '').strip()
+                username_raw = row['username']
+                password_raw = row['password']
+
+                # Explicitly handle NaN
+                if pd.isna(username_raw) or pd.isna(password_raw):
+                    raise ValueError("Empty username or password")
+
+                username = str(username_raw).strip()
+                password = str(password_raw).strip()
+
+                # You can also keep a fallback check
+                if not username or not password:
+                    raise ValueError("Empty username or password")
+
+                # Validate user_id and application_id
+                if user_id not in user_lookup:
+                    raise ValueError(f"Invalid user_id: {user_id}")
+                if application_id not in app_lookup:
+                    raise ValueError(f"Invalid application_id: {application_id}")
+
+                # Validate email match if email column is present
+                if 'user_email' in df.columns:
+                    uploaded_email = str(row.get('user_email', '')).strip().lower()
+                    actual_email = user_lookup[user_id].email.lower()
+                    if uploaded_email and uploaded_email != actual_email:
+                        raise ValueError(f"user_email mismatch for user_id {user_id} (Expected: {actual_email}, Got: {uploaded_email})")
+
                 # Validate data
-                if not row['username'] or not row['password']:
-                    error_count += 1
-                    errors.append(f"Row {_ + 2}: Empty username or password")
-                    continue
+                # if not row['username'] or not row['password']:
+                #     error_count += 1
+                #     errors.append(f"Row {_ + 2}: Empty username or password")
+                #     continue
                 
+                # Validate username/password
+                # if not username or not password:
+                #     raise ValueError("Empty username or password")
+
+
+                # Create new credential
+                # new_cred = AppCredentials(
+                #     user_id=row['user_id'],
+                #     application_id=row['application_id'],
+                #     username=row['username'],
+                #     password=encrypt_password(str(row['password']))  # Convert to string and encrypt
+                # )
                 # Create new credential
                 new_cred = AppCredentials(
-                    user_id=row['user_id'],
-                    application_id=row['application_id'],
-                    username=row['username'],
-                    password=encrypt_password(str(row['password']))  # Convert to string and encrypt
+                    user_id=user_id,
+                    application_id=application_id,
+                    username=username,
+                    password=encrypt_password(password)
                 )
 
                 db.add(new_cred)
                 
                 success_count += 1
                 
+            # except Exception as e:
+            #     error_count += 1
+            #     errors.append(f"Error processing row {_ + 2}: {str(e)}")
             except Exception as e:
                 error_count += 1
-                errors.append(f"Error processing row {_ + 2}: {str(e)}")
+                error_data = {
+                    "row": row_number,
+                    # "user_id": row.get('user_id'),
+                    # "application_id": row.get('application_id'),
+                    "user_name": user_lookup.get(user_id).name if user_id in user_lookup else f"Unknown (ID {user_id})",
+                    "application_name": app_lookup.get(application_id).name if application_id in app_lookup else f"Unknown (ID {application_id})",
+                    "username": row.get('username'),
+                    "error": str(e)
+                }
+                errors.append(error_data)
         
         # Commit all changes
         await db.commit()
         
+        print(success_count)
+        print(error_count)
+        print(errors)
+        # content={"errors": clean_nan(errors if errors else None)}
         return {
             "message": "Bulk upload completed",
             "success_count": success_count,
             "error_count": error_count,
-            "errors": errors if errors else None
+            # "errors": content
+            "errors": clean_nan(errors if errors else None)
         }
         
-    except Exception as e:
-        await db.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        file.file.close()
+    # except Exception as e:
+    #     await db.rollback()
+    #     raise HTTPException(status_code=500, detail=str(e))
+    # finally:
+    #     file.file.close()
 
 
 
